@@ -12,11 +12,14 @@ pub struct NoPossibleDispersion;
 
 impl fmt::Display for NoPossibleDispersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cannot find a p-dispersion solution to the provided problem")
+        write!(
+            f,
+            "Cannot find a p-dispersion solution to the provided problem"
+        )
     }
 }
 
-impl std::error::Error for NoPossibleDispersion { }
+impl std::error::Error for NoPossibleDispersion {}
 
 impl Point {
     pub fn new(x: f32, y: f32) -> Self {
@@ -121,7 +124,10 @@ fn search(mut solve_data: Box<SolveData>) -> Option<Box<SolveData>> {
     search(solve_data)
 }
 
-pub fn solve_p_dispersion(input_array: &[Point], placements: u32) -> Result<Box<[usize]>, NoPossibleDispersion> {
+pub fn solve_p_dispersion(
+    input_array: &[Point],
+    placements: u32,
+) -> Result<Box<[usize]>, NoPossibleDispersion> {
     let input_size = input_array.len();
 
     let mut point_data = PointData::new(input_size);
@@ -142,10 +148,12 @@ pub fn solve_p_dispersion(input_array: &[Point], placements: u32) -> Result<Box<
 
     let mut left_index = 0;
     let mut right_index = possible_point_distance.len();
-    let mut recent_result: Option<Box<SolveData>> = None;
+    let mut largest_distance: f32 = 0.;
+    let mut best_result: Option<Box<SolveData>> = None;
 
     while left_index < right_index {
         let target = (left_index + right_index) / 2;
+
         match search(Box::new(SolveData::new(
             input_size,
             &point_data,
@@ -154,7 +162,10 @@ pub fn solve_p_dispersion(input_array: &[Point], placements: u32) -> Result<Box<
         ))) {
             Some(result) => {
                 right_index = target - 1;
-                recent_result = Some(result);
+                if possible_point_distance[target] > largest_distance {
+                    largest_distance = possible_point_distance[target];
+                    best_result = Some(result);
+                }
             }
             None => {
                 left_index = target + 1;
@@ -162,13 +173,38 @@ pub fn solve_p_dispersion(input_array: &[Point], placements: u32) -> Result<Box<
         }
     }
 
-    match recent_result {
+    // [FIXME] Bandaid solution to the termination of the binary search
+
+    if let Some(result) = search(Box::new(SolveData::new(
+        input_size,
+        &point_data,
+        possible_point_distance[left_index],
+        placements as usize,
+    ))) && possible_point_distance[left_index] > largest_distance
+    {
+        largest_distance = possible_point_distance[left_index];
+        best_result = Some(result);
+    }
+
+    if let Some(result) = search(Box::new(SolveData::new(
+        input_size,
+        &point_data,
+        possible_point_distance[right_index],
+        placements as usize,
+    ))) && possible_point_distance[right_index] > largest_distance
+    {
+        best_result = Some(result);
+    }
+
+    match best_result {
         Some(data) => {
             // so it is possible...
-            Ok(data.selected_points.iter().cloned().collect::<Box<[usize]>>())
+            Ok(data
+                .selected_points
+                .iter()
+                .cloned()
+                .collect::<Box<[usize]>>())
         }
-        None => {
-            Err(NoPossibleDispersion)
-        }
+        None => Err(NoPossibleDispersion),
     }
 }
