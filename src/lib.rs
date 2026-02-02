@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{collections::HashSet, iter::zip};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -19,8 +19,8 @@ impl fmt::Display for NoPossibleDispersion {
 impl std::error::Error for NoPossibleDispersion { }
 
 impl Point {
-    fn new() -> Self {
-        Point { x: 0., y: 0. }
+    pub fn new(x: f32, y: f32) -> Self {
+        Point { x, y }
     }
 
     fn set(&mut self, point: &Point) {
@@ -42,7 +42,7 @@ struct PointData {
 impl PointData {
     fn new(location_count: usize) -> Self {
         Self {
-            location: vec![Point::new(); location_count],
+            location: vec![Point::default(); location_count],
             distance_matrix: vec![vec![0.; location_count]; location_count],
         }
     }
@@ -121,11 +121,13 @@ fn search(mut solve_data: Box<SolveData>) -> Option<Box<SolveData>> {
     search(solve_data)
 }
 
-pub fn solve_p_dispersion(point_array: &[Point], input_size: usize) -> Result<Box<[usize]>, NoPossibleDispersion> {
+pub fn solve_p_dispersion(input_array: &[Point], placements: u32) -> Result<Box<[usize]>, NoPossibleDispersion> {
+    let input_size = input_array.len();
+
     let mut point_data = PointData::new(input_size);
     let mut possible_point_distance = Vec::new();
 
-    for (point_input, point_data) in zip(point_array, point_data.location.iter_mut()) {
+    for (point_input, point_data) in zip(input_array, point_data.location.iter_mut()) {
         point_data.set(point_input);
     }
 
@@ -145,10 +147,10 @@ pub fn solve_p_dispersion(point_array: &[Point], input_size: usize) -> Result<Bo
     while left_index < right_index {
         let target = (left_index + right_index) / 2;
         match search(Box::new(SolveData::new(
-            8,
+            input_size,
             &point_data,
             possible_point_distance[target],
-            4,
+            placements as usize,
         ))) {
             Some(result) => {
                 right_index = target - 1;
