@@ -3,8 +3,10 @@ name = "p-dispersion"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
-
-
-[dev-dependencies]
-porcelain = { path = "porcelain" }
+serde = { version = "1.0.228", features = ["derive"] }
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.108"

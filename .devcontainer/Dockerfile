@@ -2,7 +2,7 @@ FROM quay.io/fedora/fedora-minimal:42
 
 # No pulling optional dependencies
 RUN echo install_weak_deps=False >> /etc/dnf/dnf.conf && \
-    dnf install -y cc git sudo openssh-server mesa-libGL libXi libxkbcommon xauth nano wget tar bash-completion --skip-unavailable && \
+    dnf install -y cc git sudo openssh-server nano wget tar bash-completion --skip-unavailable && \
     dnf clean all && rm -rf /var/cache/dnf
 
 # Manually install eza
