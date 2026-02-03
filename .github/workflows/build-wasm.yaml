@@ -13,9 +13,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     - name: Install wasm-pack
-      run: cargo install wasm-pack
+      uses: taiki-e/install-action@v2
+      with:
+        tool: wasm-pack
+        fallback: cargo-install
     - name: Build wasm artifact
       run: wasm-pack build --release --no-pack --target web
     - name: Upload artifact
