@@ -34,12 +34,23 @@ fn main() {
         Point::new(0., 0.),
         Point::new(1., 0.),
         Point::new(2., 0.),
+        Point::new(3., 0.),
+        Point::new(4., 0.),
         Point::new(0., 1.),
         Point::new(1., 1.),
         Point::new(2., 1.),
+        Point::new(3., 1.),
+        Point::new(4., 1.),
         Point::new(0., 2.),
         Point::new(1., 2.),
         Point::new(2., 2.),
+        Point::new(3., 2.),
+        Point::new(4., 2.),
+        Point::new(0., 3.),
+        Point::new(1., 3.),
+        Point::new(2., 3.),
+        Point::new(3., 3.),
+        Point::new(4., 3.),
     ];
 
     let draw_points = points.map(|data| -> porcelain::Point {
@@ -50,7 +61,7 @@ fn main() {
     });
 
     let app_state = AppState {
-        draw_index: solve_p_dispersion(&points, 4).expect("The problem is solved."),
+        draw_index: solve_p_dispersion(&points, 6).expect("The problem is solved."),
         draw_location: Box::new(draw_points),
     };
 

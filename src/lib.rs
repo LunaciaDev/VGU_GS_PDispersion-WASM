@@ -147,12 +147,11 @@ pub fn solve_p_dispersion(
     possible_point_distance.sort_by(f32::total_cmp);
 
     let mut left_index = 0;
-    let mut right_index = possible_point_distance.len();
-    let mut largest_distance: f32 = 0.;
+    let mut right_index = possible_point_distance.len() - 1;
     let mut best_result: Option<Box<SolveData>> = None;
 
     while left_index < right_index {
-        let target = (left_index + right_index) / 2;
+        let target = left_index.midpoint(right_index);
 
         match search(Box::new(SolveData::new(
             input_size,
@@ -161,39 +160,11 @@ pub fn solve_p_dispersion(
             placements as usize,
         ))) {
             Some(result) => {
-                right_index = target - 1;
-                if possible_point_distance[target] > largest_distance {
-                    largest_distance = possible_point_distance[target];
-                    best_result = Some(result);
-                }
-            }
-            None => {
                 left_index = target + 1;
+                best_result = Some(result);
             }
+            None => right_index = target,
         }
-    }
-
-    // [FIXME] Bandaid solution to the termination of the binary search
-
-    if let Some(result) = search(Box::new(SolveData::new(
-        input_size,
-        &point_data,
-        possible_point_distance[left_index],
-        placements as usize,
-    ))) && possible_point_distance[left_index] > largest_distance
-    {
-        largest_distance = possible_point_distance[left_index];
-        best_result = Some(result);
-    }
-
-    if let Some(result) = search(Box::new(SolveData::new(
-        input_size,
-        &point_data,
-        possible_point_distance[right_index],
-        placements as usize,
-    ))) && possible_point_distance[right_index] > largest_distance
-    {
-        best_result = Some(result);
     }
 
     match best_result {
