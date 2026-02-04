@@ -10,9 +10,9 @@ fn main() {
         return;
     }
 
-    let row_count = args[1].parse::<u32>().expect("row_count must be u32");
-    let col_count = args[2].parse::<u32>().expect("col_count must be u32");
-    let select_count = args[3].parse::<u32>().expect("select_count must be u32");
+    let row_count = args[1].parse::<u8>().expect("row_count must be u8");
+    let col_count = args[2].parse::<u8>().expect("col_count must be u8");
+    let select_count = args[3].parse::<u8>().expect("select_count must be u8");
 
     let mut input = Vec::with_capacity((row_count * col_count) as usize);
 

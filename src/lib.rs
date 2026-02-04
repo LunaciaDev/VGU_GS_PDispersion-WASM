@@ -31,7 +31,7 @@ impl Point {
 #[wasm_bindgen]
 pub fn solve_p_dispersion(
     input_array: JsValue,
-    placements: u32,
+    placements: u8,
 ) -> Result<Box<[usize]>, SolveError> {
     let input_array: Box<[Point]> = match serde_wasm_bindgen::from_value(input_array) {
         Ok(val) => val,
@@ -45,6 +45,9 @@ pub fn solve_p_dispersion(
     if input_array.len() < placements as usize {
         return Err(SolveError::Unsolvable);
     }
+    if input_array.len() > 192 {
+        return Err(SolveError::MalformedInput);
+    }
 
     if let Some(result) = p_solver(&input_array, placements) {
         return Ok(result);
@@ -55,13 +58,16 @@ pub fn solve_p_dispersion(
 
 pub fn solve_p_dispersion_rs(
     input_array: &[Point],
-    placements: u32,
+    placements: u8,
 ) -> Result<Box<[usize]>, SolveError> {
     if input_array.is_empty() {
         return Err(SolveError::EmptyInput);
     }
     if input_array.len() < placements as usize {
         return Err(SolveError::Unsolvable);
+    }
+    if input_array.len() > 192 {
+        return Err(SolveError::MalformedInput);
     }
 
     if let Some(result) = p_solver(input_array, placements) {
