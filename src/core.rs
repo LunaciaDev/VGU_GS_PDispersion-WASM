@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter::zip};
+use std::iter::zip;
 
 use crate::Point;
 
@@ -40,25 +40,61 @@ impl AdjacencyMatrix {
 }
 
 #[derive(Clone)]
+struct PointVec {
+    data: Vec<bool>,
+    true_count: usize,
+}
+
+impl PointVec {
+    fn new(location_count: usize, fill: bool) -> Self {
+        Self {
+            data: vec![fill; location_count],
+            true_count: if fill { location_count } else { 0 },
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.true_count
+    }
+
+    fn next(&self) -> Option<usize> {
+        self.data.iter().position(|x| *x)
+    }
+
+    fn remove(&mut self, index: usize) {
+        self.true_count -= self.data[index] as usize;
+        self.data[index] = false;
+    }
+
+    fn insert(&mut self, index: usize) {
+        self.true_count += !self.data[index] as usize;
+        self.data[index] = true;
+    }
+}
+
+impl From<PointVec> for Box<[usize]> {
+    fn from(val: PointVec) -> Self {
+        val.data
+            .iter()
+            .enumerate()
+            .filter(|(_index, value)| **value)
+            .map(|(index, _value)| -> usize { index })
+            .collect()
+    }
+}
+
+#[derive(Clone)]
 struct SolveData {
-    selected_points: HashSet<usize>,
-    remaining_points: HashSet<usize>,
+    selected_points: PointVec,
+    remaining_points: PointVec,
 }
 
 impl SolveData {
     fn new(location_count: usize) -> Self {
-        let mut data = Self {
-            selected_points: HashSet::new(),
-            remaining_points: HashSet::new(),
-        };
-
-        data.selected_points.reserve(location_count);
-        data.remaining_points.reserve(location_count);
-        for i in 0..location_count {
-            data.remaining_points.insert(i);
+        Self {
+            selected_points: PointVec::new(location_count, false),
+            remaining_points: PointVec::new(location_count, true),
         }
-
-        data
     }
 }
 
@@ -76,30 +112,30 @@ impl Point {
 fn search(
     mut solve_data: Box<SolveData>,
     adjacency_matrix: &AdjacencyMatrix,
-    select_size: usize
+    select_size: usize,
 ) -> Option<Box<SolveData>> {
     if solve_data.selected_points.len() >= select_size {
         return Some(solve_data);
     }
 
-    if solve_data.remaining_points.len() < select_size - solve_data.selected_points.len()
-    {
+    if solve_data.remaining_points.len() < select_size - solve_data.selected_points.len() {
         return None;
     }
 
     // pick next point
-    let point = *solve_data
+    let point = solve_data
         .remaining_points
-        .iter()
         .next()
-        .expect("Must have at least 1 remaining");
+        .expect("At least one point remaining");
+
+    solve_data.remaining_points.remove(point);
 
     // Pick this point
     let mut new_data = solve_data.clone();
+
     new_data.selected_points.insert(point);
-    new_data.remaining_points.remove(&point);
     for point in adjacency_matrix.data[point].iter() {
-        new_data.remaining_points.remove(point);
+        new_data.remaining_points.remove(*point);
     }
 
     if let Some(result) = search(new_data, adjacency_matrix, select_size) {
@@ -107,7 +143,6 @@ fn search(
     };
 
     // Do not pick this point
-    solve_data.remaining_points.remove(&point);
     search(solve_data, adjacency_matrix, select_size)
 }
 
@@ -139,7 +174,7 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
         match search(
             Box::new(SolveData::new(input_size)),
             &AdjacencyMatrix::new(input_size, &point_data, possible_point_distance[target]),
-            placements as usize
+            placements as usize,
         ) {
             Some(result) => {
                 left_index = target + 1;
@@ -150,9 +185,6 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
     }
 
     best_result.map(|data| {
-        data.selected_points
-            .iter()
-            .cloned()
-            .collect::<Box<[usize]>>()
+        data.selected_points.into()
     })
 }
