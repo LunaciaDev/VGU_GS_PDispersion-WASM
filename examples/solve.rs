@@ -9,5 +9,5 @@ fn main() {
         }
     }
 
-    println!("{:?}", solve_p_dispersion_rs(&input, 7).unwrap());
+    println!("{:?}", solve_p_dispersion_rs(&input, 12).unwrap());
 }

@@ -17,25 +17,38 @@ impl PointData {
     }
 }
 
+struct AdjacencyMatrix {
+    data: Vec<Vec<usize>>,
+}
+
+impl AdjacencyMatrix {
+    fn new(location_count: usize, point_data: &PointData, neighbour_distance: f32) -> Self {
+        let mut ret = Self {
+            data: vec![Vec::with_capacity(location_count); location_count],
+        };
+
+        for (index, row) in ret.data.iter_mut().enumerate() {
+            for (point, distance) in point_data.distance_matrix[index].iter().enumerate() {
+                if *distance <= neighbour_distance {
+                    row.push(point);
+                }
+            }
+        }
+
+        ret
+    }
+}
+
 #[derive(Clone)]
 struct SolveData {
-    select_size: usize,
     selected_points: HashSet<usize>,
     remaining_points: HashSet<usize>,
-    adjacency_matrix: Vec<Vec<usize>>,
 }
 
 impl SolveData {
-    fn new(
-        location_count: usize,
-        point_data: &PointData,
-        neighbour_distance: f32,
-        select_size: usize,
-    ) -> Self {
+    fn new(location_count: usize) -> Self {
         let mut data = Self {
-            select_size,
             selected_points: HashSet::new(),
-            adjacency_matrix: vec![Vec::new(); location_count],
             remaining_points: HashSet::new(),
         };
 
@@ -43,13 +56,6 @@ impl SolveData {
         data.remaining_points.reserve(location_count);
         for i in 0..location_count {
             data.remaining_points.insert(i);
-        }
-        for (index, row) in data.adjacency_matrix.iter_mut().enumerate() {
-            for (point, distance) in point_data.distance_matrix[index].iter().enumerate() {
-                if *distance <= neighbour_distance {
-                    row.push(point);
-                }
-            }
         }
 
         data
@@ -67,12 +73,16 @@ impl Point {
     }
 }
 
-fn search(mut solve_data: Box<SolveData>) -> Option<Box<SolveData>> {
-    if solve_data.selected_points.len() >= solve_data.select_size {
+fn search(
+    mut solve_data: Box<SolveData>,
+    adjacency_matrix: &AdjacencyMatrix,
+    select_size: usize
+) -> Option<Box<SolveData>> {
+    if solve_data.selected_points.len() >= select_size {
         return Some(solve_data);
     }
 
-    if solve_data.remaining_points.len() < solve_data.select_size - solve_data.selected_points.len()
+    if solve_data.remaining_points.len() < select_size - solve_data.selected_points.len()
     {
         return None;
     }
@@ -88,17 +98,17 @@ fn search(mut solve_data: Box<SolveData>) -> Option<Box<SolveData>> {
     let mut new_data = solve_data.clone();
     new_data.selected_points.insert(point);
     new_data.remaining_points.remove(&point);
-    for point in new_data.adjacency_matrix[point].iter() {
+    for point in adjacency_matrix.data[point].iter() {
         new_data.remaining_points.remove(point);
     }
 
-    if let Some(result) = search(new_data) {
+    if let Some(result) = search(new_data, adjacency_matrix, select_size) {
         return Some(result);
     };
 
     // Do not pick this point
     solve_data.remaining_points.remove(&point);
-    search(solve_data)
+    search(solve_data, adjacency_matrix, select_size)
 }
 
 pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
@@ -126,12 +136,11 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
     while left_index < right_index {
         let target = left_index.midpoint(right_index);
 
-        match search(Box::new(SolveData::new(
-            input_size,
-            &point_data,
-            possible_point_distance[target],
-            placements as usize,
-        ))) {
+        match search(
+            Box::new(SolveData::new(input_size)),
+            &AdjacencyMatrix::new(input_size, &point_data, possible_point_distance[target]),
+            placements as usize
+        ) {
             Some(result) => {
                 left_index = target + 1;
                 best_result = Some(result);
