@@ -1,4 +1,4 @@
-use std::iter::zip;
+use std::{cell::RefCell, iter::zip, rc::Rc};
 
 use crate::Point;
 
@@ -67,8 +67,34 @@ impl PointVec {
         }
     }
 
+    fn reset(&mut self, location_count: usize, fill: bool) {
+        if fill {
+            for sector in self.data.iter_mut() {
+                *sector = u32::MAX;
+            }
+
+            if !location_count.is_multiple_of(32) {
+                *self.data.last_mut().unwrap() &= 2_u32.pow(location_count as u32 % 32) - 1;
+            }
+
+            self.true_count = location_count;
+        } else {
+            for sector in self.data.iter_mut() {
+                *sector = 0;
+            }
+            self.true_count = 0;
+        }
+    }
+
     fn len(&self) -> usize {
         self.true_count
+    }
+
+    fn copy(&mut self, copy_src: &PointVec) {
+        for (lhs, rhs) in zip(self.data.iter_mut(), copy_src.data.iter()) {
+            *lhs = *rhs;
+        }
+        self.true_count = copy_src.true_count;
     }
 
     fn next(&self) -> Option<usize> {
@@ -138,6 +164,53 @@ impl SolveData {
             remaining_points: PointVec::new(location_count, true),
         }
     }
+
+    fn copy(&mut self, copy_src: &SolveData) {
+        self.selected_points.copy(&copy_src.selected_points);
+        self.remaining_points.copy(&copy_src.remaining_points);
+    }
+
+    fn reset(&mut self, location_count: usize) {
+        self.selected_points.reset(location_count, false);
+        self.remaining_points.reset(location_count, true);
+    }
+}
+
+struct SolveStack {
+    data: Vec<Rc<RefCell<SolveData>>>,
+    idx: usize,
+}
+
+impl SolveStack {
+    fn new(max_search_depth: usize, location_count: usize) -> Self {
+        Self {
+            data: {
+                let mut v = Vec::with_capacity(max_search_depth);
+                (0..max_search_depth)
+                    .for_each(|_| v.push(Rc::new(RefCell::new(SolveData::new(location_count)))));
+                v
+            },
+            idx: 0,
+        }
+    }
+
+    fn alloc(&mut self) -> Rc<RefCell<SolveData>> {
+        assert!(self.idx < self.data.len());
+
+        let ret = self.data[self.idx].clone();
+        self.idx += 1;
+
+        ret
+    }
+
+    fn dealloc(&mut self) {
+        self.idx -= 1;
+    }
+
+    fn reset(&mut self, location_count: usize) {
+        self.idx = 0;
+        self.data[0].borrow_mut().reset(location_count);
+    }
 }
 
 impl Point {
@@ -152,39 +225,50 @@ impl Point {
 }
 
 fn search(
-    mut solve_data: Box<SolveData>,
+    solve_data: Rc<RefCell<SolveData>>,
+    stack: &mut SolveStack,
     adjacency_matrix: &AdjacencyMatrix,
     select_size: usize,
-) -> Option<Box<SolveData>> {
-    if solve_data.selected_points.len() >= select_size {
+) -> Option<Rc<RefCell<SolveData>>> {
+    let mut mut_solve_data = solve_data.borrow_mut();
+
+    if mut_solve_data.selected_points.len() >= select_size {
+        drop(mut_solve_data);
         return Some(solve_data);
     }
 
-    if solve_data.remaining_points.len() < select_size - solve_data.selected_points.len() {
+    if mut_solve_data.remaining_points.len() < select_size - mut_solve_data.selected_points.len() {
         return None;
     }
 
     // pick next point
-    let point = solve_data
+    let point = mut_solve_data
         .remaining_points
         .next()
         .expect("At least one point remaining");
-    solve_data.remaining_points.remove(point);
+    mut_solve_data.remaining_points.remove(point);
 
     // Pick this point
-    let mut new_data = solve_data.clone();
+    let new_data = stack.alloc();
+    let mut mut_new_data = new_data.borrow_mut();
+    mut_new_data.copy(&mut_solve_data);
 
-    new_data.selected_points.insert(point);
-    new_data
+    mut_new_data.selected_points.insert(point);
+    mut_new_data
         .remaining_points
         .subtract(&adjacency_matrix.data[point]);
 
-    if let Some(result) = search(new_data, adjacency_matrix, select_size) {
+    drop(mut_new_data);
+
+    if let Some(result) = search(new_data, stack, adjacency_matrix, select_size) {
         return Some(result);
     };
 
+    stack.dealloc();
+    drop(mut_solve_data);
+
     // Do not pick this point
-    search(solve_data, adjacency_matrix, select_size)
+    search(solve_data, stack, adjacency_matrix, select_size)
 }
 
 pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
@@ -210,23 +294,30 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
 
     let mut left_index = 0;
     let mut right_index = possible_point_distance.len() - 1;
-    let mut best_result: Option<Box<SolveData>> = None;
+    let mut best_result = PointVec::new(input_size, false);
+    let mut stack = SolveStack::new(input_size, input_size);
 
     while left_index < right_index {
+        stack.reset(input_size);
         let target = left_index.midpoint(right_index);
 
         match search(
-            Box::new(SolveData::new(input_size)),
+            stack.alloc(),
+            &mut stack,
             &AdjacencyMatrix::new(input_size, &point_data, possible_point_distance[target]),
             placements as usize,
         ) {
             Some(result) => {
                 left_index = target + 1;
-                best_result = Some(result);
+                best_result.copy(&result.borrow().selected_points);
             }
             None => right_index = target,
         }
     }
 
-    best_result.map(|data| data.selected_points.into())
+    if best_result.true_count == 0 {
+        None
+    } else {
+        Some(best_result.into())
+    }
 }
