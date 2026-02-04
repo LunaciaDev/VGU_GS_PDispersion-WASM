@@ -101,13 +101,13 @@ fn search(mut solve_data: Box<SolveData>) -> Option<Box<SolveData>> {
     search(solve_data)
 }
 
-pub fn p_solver(input_data: Box<[Point]>, placements: u32) -> Option<Box<[usize]>> {
+pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
     let input_size = input_data.len();
     let mut point_data = PointData::new(input_data.len());
     let mut possible_point_distance = Vec::new();
 
     for (point_input, point_data) in zip(input_data, point_data.location.iter_mut()) {
-        point_data.set(&point_input);
+        point_data.set(point_input);
     }
 
     for (point_a, row) in point_data.distance_matrix.iter_mut().enumerate() {

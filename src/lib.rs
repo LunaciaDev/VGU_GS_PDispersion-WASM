@@ -13,10 +13,11 @@ pub struct Point {
 }
 
 #[wasm_bindgen]
+#[derive(Debug)]
 pub enum SolveError {
     MalformedInput,
     EmptyInput,
-    Unsolvable
+    Unsolvable,
 }
 
 #[wasm_bindgen]
@@ -40,6 +41,27 @@ pub fn solve_p_dispersion(
     };
     if input_array.is_empty() {
         return Err(SolveError::EmptyInput);
+    }
+    if input_array.len() < placements as usize {
+        return Err(SolveError::Unsolvable);
+    }
+
+    if let Some(result) = p_solver(&input_array, placements) {
+        return Ok(result);
+    }
+
+    Err(SolveError::Unsolvable)
+}
+
+pub fn solve_p_dispersion_rs(
+    input_array: &[Point],
+    placements: u32,
+) -> Result<Box<[usize]>, SolveError> {
+    if input_array.is_empty() {
+        return Err(SolveError::EmptyInput);
+    }
+    if input_array.len() < placements as usize {
+        return Err(SolveError::Unsolvable);
     }
 
     if let Some(result) = p_solver(input_array, placements) {
