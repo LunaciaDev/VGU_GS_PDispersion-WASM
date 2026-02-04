@@ -18,19 +18,19 @@ impl PointData {
 }
 
 struct AdjacencyMatrix {
-    data: Vec<Vec<usize>>,
+    data: Vec<PointVec>,
 }
 
 impl AdjacencyMatrix {
     fn new(location_count: usize, point_data: &PointData, neighbour_distance: f32) -> Self {
         let mut ret = Self {
-            data: vec![Vec::with_capacity(location_count); location_count],
+            data: vec![PointVec::new(location_count, false); location_count],
         };
 
         for (index, row) in ret.data.iter_mut().enumerate() {
             for (point, distance) in point_data.distance_matrix[index].iter().enumerate() {
                 if *distance <= neighbour_distance {
-                    row.push(point);
+                    row.insert(point);
                 }
             }
         }
@@ -41,15 +41,29 @@ impl AdjacencyMatrix {
 
 #[derive(Clone)]
 struct PointVec {
-    data: Vec<bool>,
+    data: Vec<u32>,
     true_count: usize,
 }
 
 impl PointVec {
     fn new(location_count: usize, fill: bool) -> Self {
-        Self {
-            data: vec![fill; location_count],
-            true_count: if fill { location_count } else { 0 },
+        let sector_count = location_count / 32 + !location_count.is_multiple_of(32) as usize;
+        if fill {
+            let mut ret = Self {
+                data: vec![u32::MAX; sector_count],
+                true_count: location_count,
+            };
+
+            if !location_count.is_multiple_of(32) {
+                *ret.data.last_mut().unwrap() &= 2_u32.pow(location_count as u32 % 32) - 1;
+            }
+
+            ret
+        } else {
+            Self {
+                data: vec![0; sector_count],
+                true_count: 0,
+            }
         }
     }
 
@@ -58,28 +72,56 @@ impl PointVec {
     }
 
     fn next(&self) -> Option<usize> {
-        self.data.iter().position(|x| *x)
+        self.data
+            .iter()
+            .position(|value| *value != 0)
+            .map(|index| 32 * index + self.data[index].trailing_zeros() as usize)
+    }
+
+    fn subtract(&mut self, rhs: &PointVec) {
+        self.true_count = 0;
+        for (lhs, rhs) in zip(self.data.iter_mut(), rhs.data.iter()) {
+            *lhs &= !rhs;
+            self.true_count += lhs.count_ones() as usize;
+        }
     }
 
     fn remove(&mut self, index: usize) {
-        self.true_count -= self.data[index] as usize;
-        self.data[index] = false;
+        let sector = index / 32;
+        let bitmask = 1 << (index % 32);
+
+        self.true_count -= (self.data[sector] & bitmask == bitmask) as usize;
+        self.data[sector] &= !bitmask;
     }
 
     fn insert(&mut self, index: usize) {
-        self.true_count += !self.data[index] as usize;
-        self.data[index] = true;
+        let sector = index / 32;
+        let bitmask = 1 << (index % 32);
+
+        self.true_count += (self.data[sector] & bitmask != bitmask) as usize;
+        self.data[sector] |= bitmask;
     }
 }
 
 impl From<PointVec> for Box<[usize]> {
     fn from(val: PointVec) -> Self {
-        val.data
+        let mut result: Vec<usize> = Vec::new();
+        for (index, value) in val
+            .data
             .iter()
             .enumerate()
-            .filter(|(_index, value)| **value)
-            .map(|(index, _value)| -> usize { index })
-            .collect()
+            .filter(|(_index, value)| **value != 0)
+        {
+            // copy out the u32 ref
+            let mut value = *value;
+
+            while value > 0 {
+                result.push(index * 32 + value.trailing_zeros() as usize);
+                value ^= 1 << value.trailing_zeros();
+            }
+        }
+
+        result.into_boxed_slice()
     }
 }
 
@@ -127,16 +169,15 @@ fn search(
         .remaining_points
         .next()
         .expect("At least one point remaining");
-
     solve_data.remaining_points.remove(point);
 
     // Pick this point
     let mut new_data = solve_data.clone();
 
     new_data.selected_points.insert(point);
-    for point in adjacency_matrix.data[point].iter() {
-        new_data.remaining_points.remove(*point);
-    }
+    new_data
+        .remaining_points
+        .subtract(&adjacency_matrix.data[point]);
 
     if let Some(result) = search(new_data, adjacency_matrix, select_size) {
         return Some(result);
@@ -149,7 +190,6 @@ fn search(
 pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
     let input_size = input_data.len();
     let mut point_data = PointData::new(input_data.len());
-    let mut possible_point_distance = Vec::new();
 
     for (point_input, point_data) in zip(input_data, point_data.location.iter_mut()) {
         point_data.set(point_input);
@@ -158,10 +198,14 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
     for (point_a, row) in point_data.distance_matrix.iter_mut().enumerate() {
         for (point_b, distance) in row.iter_mut().enumerate() {
             *distance = point_data.location[point_a].get_distance(&point_data.location[point_b]);
-            possible_point_distance.push(*distance);
         }
     }
 
+    let mut possible_point_distance = point_data
+        .distance_matrix
+        .first()
+        .expect("Distance matrix must not be empty")
+        .clone();
     possible_point_distance.sort_by(f32::total_cmp);
 
     let mut left_index = 0;
@@ -184,7 +228,5 @@ pub fn p_solver(input_data: &[Point], placements: u32) -> Option<Box<[usize]>> {
         }
     }
 
-    best_result.map(|data| {
-        data.selected_points.into()
-    })
+    best_result.map(|data| data.selected_points.into())
 }
