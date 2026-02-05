@@ -288,7 +288,7 @@ fn search(
     search(solve_data, stack, adjacency_matrix, select_size)
 }
 
-pub fn p_solver(input_data: &[Point], placements: u8) -> Option<Box<[usize]>> {
+pub fn naive_solver(input_data: &[Point], placements: u8) -> Option<Box<[usize]>> {
     let input_size = input_data.len() as u8;
     let mut point_data = PointData::new(input_data.len());
 

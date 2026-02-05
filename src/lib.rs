@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::core::p_solver;
+use crate::naive::naive_solver;
 
-mod core;
+mod naive;
 
 #[wasm_bindgen]
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ pub fn solve_p_dispersion(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = p_solver(&input_array, placements) {
+    if let Some(result) = naive_solver(&input_array, placements) {
         return Ok(result);
     }
 
@@ -70,7 +70,7 @@ pub fn solve_p_dispersion_rs(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = p_solver(input_array, placements) {
+    if let Some(result) = naive_solver(input_array, placements) {
         return Ok(result);
     }
 
