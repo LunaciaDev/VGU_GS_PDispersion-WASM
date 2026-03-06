@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-use crate::naive::naive_solver;
-
-mod naive;
+mod exact;
 
 #[wasm_bindgen]
 #[derive(Default, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -29,7 +27,7 @@ impl Point {
 }
 
 #[wasm_bindgen]
-pub fn solve_p_dispersion(
+pub fn solve_exact(
     input_array: JsValue,
     placements: u8,
 ) -> Result<Box<[usize]>, SolveError> {
@@ -49,7 +47,7 @@ pub fn solve_p_dispersion(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = naive_solver(&input_array, placements) {
+    if let Some(result) = exact::solver(&input_array, placements) {
         return Ok(result);
     }
 
@@ -70,7 +68,7 @@ pub fn solve_p_dispersion_rs(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = naive_solver(input_array, placements) {
+    if let Some(result) = exact::solver(input_array, placements) {
         return Ok(result);
     }
 
