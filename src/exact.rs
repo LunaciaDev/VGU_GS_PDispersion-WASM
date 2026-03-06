@@ -151,17 +151,6 @@ impl SolveData {
     }
 }
 
-impl Point {
-    fn set(&mut self, point: &Point) {
-        self.x = point.x;
-        self.y = point.y;
-    }
-
-    fn get_distance(&self, point: &Point) -> f32 {
-        ((self.x - point.x).powi(2) + (self.y - point.y).powi(2)).sqrt()
-    }
-}
-
 fn search(
     mut solve_data: SolveData,
     adjacency_matrix: &AdjacencyMatrix,
