@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 mod exact;
+mod greedy;
 mod random;
 
 #[wasm_bindgen]
@@ -128,7 +129,7 @@ pub fn solve_p_dispersion_rs(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = random::solver(input_array, placements) {
+    if let Some(result) = greedy::solver(input_array, placements) {
         return Ok(result);
     }
 
