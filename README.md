@@ -1,4 +1,3 @@
-# Fedora Minimal
+# PDispersion-WASM
 
-A docker image based on Fedora Minimal project. Has almost nothing pre-installed
-other than Git and DNF.
+Computation module for solving a p-dispersion problem.
