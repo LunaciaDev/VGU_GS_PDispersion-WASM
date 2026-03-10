@@ -129,7 +129,7 @@ pub fn solve_p_dispersion_rs(
         return Err(SolveError::MalformedInput);
     }
 
-    if let Some(result) = greedy::solver(input_array, placements) {
+    if let Some(result) = exact::solver(input_array, placements) {
         return Ok(result);
     }
 
