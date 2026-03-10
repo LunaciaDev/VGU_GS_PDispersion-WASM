@@ -198,8 +198,10 @@ pub fn solver(input_data: &[Point], placements: u8) -> Option<Box<[usize]>> {
         .distance_matrix
         .first()
         .expect("Distance matrix must not be empty")
-        .clone();
+        .clone()
+        .into_vec();
     possible_point_distance.sort_by(f32::total_cmp);
+    possible_point_distance.dedup();
 
     let mut left_index = 0;
     let mut right_index = possible_point_distance.len() - 1;
